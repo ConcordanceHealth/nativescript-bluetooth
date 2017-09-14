@@ -355,10 +355,13 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
       Bluetooth._state.peripheralArray = NSMutableArray.new();
 
       //Init obj-c UUID object from string.
-      var strToUUID = NSUUID.alloc().initWithUUIDString(arg.UUID);
+      var tempArray = NSMutableArray.new();
+      for (var i = 0; i < arg.UUID.count; i++){
+        tempArray.addObject(NSUUID.alloc().initWithUUIDString(arg.UUID[i]);
+      }
 
       //retrievePeripheralsWithIdentifiers accepts typeof NSMutableArray(NSUUID). Returns NSMutableArray(CBPeripheral)
-      var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers([strToUUID])
+      var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers(tempArray);
 
       for (i = 0; i < nsPeripheralArray.count; i++) {
         console.log("Added peripheral to array with UUID: " + nsPeripheralArray[i].identifier);

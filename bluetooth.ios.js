@@ -6,7 +6,8 @@ Bluetooth._state = {
   peripheralArray: null,
   connectCallbacks: {},
   disconnectCallbacks: {},
-  onDiscovered: null
+  onDiscovered: null,
+  onFakeScanComplete: null
 };
 
 var CBPeripheralDelegateImpl = (function (_super) {
@@ -38,6 +39,7 @@ var CBPeripheralDelegateImpl = (function (_super) {
       peripheral.discoverCharacteristicsForService(null, service);
     }
   };
+
   CBPeripheralDelegateImpl.prototype.peripheralDidDiscoverIncludedServicesForServiceError = function(peripheral, service, error) {
     console.log("----- delegate peripheral:didDiscoverIncludedServicesForService:error");
   };
@@ -153,7 +155,7 @@ var CBPeripheralDelegateImpl = (function (_super) {
       if (this._onReadPromise) {
         this._onReadPromise(result);
       } else {
-      console.log("No _onReadPromise found!");
+        console.log("No _onReadPromise found!");
       }
     } else {
       if (this._onNotifyCallback) {
@@ -341,6 +343,90 @@ Bluetooth.isBluetoothEnabled = function (arg) {
   });
 };
 
+Bluetooth.startFakeScan = function (arg) {
+  return new Promise(function (resolve, reject) {
+    try {
+      if (!Bluetooth._isEnabled()) {
+        reject("Bluetooth is not enabled");
+        return;
+      }
+      console.log("In startFakeScan")
+
+      Bluetooth._state.peripheralArray = NSMutableArray.new();
+
+      //Init obj-c UUID object from string.
+      var strToUUID = NSUUID.alloc().initWithUUIDString(arg.UUID);
+
+      //retrievePeripheralsWithIdentifiers accepts typeof NSMutableArray(NSUUID). Returns NSMutableArray(CBPeripheral)
+      var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers([strToUUID])
+
+console.log("nsPeripheralArray.length : " + nsPeripheralArray.count)
+      for (i = 0; i < nsPeripheralArray.count; i++) {
+        console.log("Added peripheral to array with UUID: " + nsPeripheralArray[i].identifier);
+        Bluetooth._state.peripheralArray.addObject(nsPeripheralArray[i]);
+      }
+
+      // TODO actualy, should init the delegate here with this as the callback (see 'onConnected') --> but first test if that works
+      Bluetooth._state.onFakeScanComplete = arg.onFakeScanComplete;
+
+
+console.log("LENGTH: " + Bluetooth._state.peripheralArray.count)
+      for (var i = 0; i < Bluetooth._state.peripheralArray.count; i++) {
+        Bluetooth._state.onFakeScanComplete({
+          UUID: Bluetooth._state.peripheralArray[i].identifier.UUIDString,
+          name: Bluetooth._state.peripheralArray[i].name,
+          RSSI: "",
+          state: Bluetooth._getState(Bluetooth._state.peripheralArray[i].state)
+        })
+      }
+
+      console.log("Calling resolove()")
+
+      resolve();
+      console.log("After resolove()")
+
+
+    } catch (ex) {
+      console.log("Error in Bluetooth.startFakeScan: " + ex);
+      reject(ex);
+    }
+  });
+
+};
+
+
+
+Bluetooth.directConnect = function() {
+  // Bluetooth.connect({
+  //   UUID: "1E0AEDA9-7D56-73CD-3BE2-3521306532CA",
+  //   onConnected: function (peripheral) {
+  //     console.log("***********************************************")
+  //     console.log("Periperhal connected");
+  //     console.log("***********************************************")
+  //
+  //   },
+  //   onDisconnected: function (peripheral) {
+  //     console.log("Periperhal disconnected with UUID: " + peripheral.UUID);
+  //   }
+  // });
+  Bluetooth.connect({
+    UUID: '1E0AEDA9-7D56-73CD-3BE2-3521306532CA"4',
+    onConnected: function (peripheral) {
+      console.log("yYyYyyyYyYyYyYyYyYyYyyYyYyYyYyYyYyYyYyYyYyyYyYyY")
+      console.log("Periperhal connected with UUID: " + peripheral.UUID);
+      console.log("yYyYyyyYyYyYyYyYyYyYyyYyYyYyYyYyYyYyYyYyYyyYyYyY")
+
+      // the peripheral object now has a list of available services:
+      peripheral.services.forEach(function(service) {
+        console.log("service found: " + JSON.stringify(service));
+      });
+    },
+    onDisconnected: function (peripheral) {
+      console.log("Periperhal disconnected with UUID: " + peripheral.UUID);
+    }
+  });
+}
+
 Bluetooth.startScanning = function (arg) {
   return new Promise(function (resolve, reject) {
     try {
@@ -401,6 +487,7 @@ Bluetooth._findPeripheral = function(UUID) {
   return null;
 };
 
+
 // note that this doesn't make much sense without scanning first
 Bluetooth.connect = function (arg) {
   return new Promise(function (resolve, reject) {
@@ -451,13 +538,17 @@ Bluetooth.disconnect = function (arg) {
         reject("Could not find peripheral with UUID " + arg.UUID);
       } else {
         console.log("Disconnecting peripheral with UUID: " + arg.UUID);
+        Bluetooth._state.disconnectCallbacks[arg.UUID] = function () {
+          arg.onDisconnected(peripheral);
+          resolve('disconnected');
+        };
         // no need to send an error when already disconnected, but it's wise to check it
         if (peripheral.state != CBPeripheralStateDisconnected) {
           Bluetooth._state.manager.cancelPeripheralConnection(peripheral);
           peripheral.delegate = null;
           // TODO remove from the peripheralArray as well
         }
-        resolve();
+        // resolve();
       }
     } catch (ex) {
       console.log("Error in Bluetooth.disconnect: " + ex);
@@ -706,43 +797,43 @@ Bluetooth.write = function (arg) {
         wrapper.characteristic,
         CBCharacteristicWriteWithResponse);
 
-    } catch (ex) {
-      console.log("Error in Bluetooth.write: " + ex);
-      reject(ex);
-    }
-  });
-};
-
-Bluetooth.writeWithoutResponse = function (arg) {
-  return new Promise(function (resolve, reject) {
-    try {
-      if (!arg.value) {
-        reject("You need to provide some data to write in the 'value' property");
-        return;
+      } catch (ex) {
+        console.log("Error in Bluetooth.write: " + ex);
+        reject(ex);
       }
-      var wrapper = Bluetooth._getWrapper(arg, CBCharacteristicPropertyWriteWithoutResponse, reject);
-      if (wrapper === null) {
-        // no need to reject, this has already been done
-        return;
-      }
+    });
+  };
 
-      var valueEncoded = Bluetooth._encodeValue(arg.value);
+  Bluetooth.writeWithoutResponse = function (arg) {
+    return new Promise(function (resolve, reject) {
+      try {
+        if (!arg.value) {
+          reject("You need to provide some data to write in the 'value' property");
+          return;
+        }
+        var wrapper = Bluetooth._getWrapper(arg, CBCharacteristicPropertyWriteWithoutResponse, reject);
+        if (wrapper === null) {
+          // no need to reject, this has already been done
+          return;
+        }
 
-      if (Bluetooth.characteristicLogging) {
-        console.log("Attempting to write (encoded): " + valueEncoded);
-      }
+        var valueEncoded = Bluetooth._encodeValue(arg.value);
 
-      wrapper.peripheral.writeValueForCharacteristicType(
-        valueEncoded,
-        wrapper.characteristic,
-        CBCharacteristicWriteWithoutResponse);
+        if (Bluetooth.characteristicLogging) {
+          console.log("Attempting to write (encoded): " + valueEncoded);
+        }
 
-      resolve();
-    } catch (ex) {
-      console.log("Error in Bluetooth.writeWithoutResponse: " + ex);
-      reject(ex);
-    }
-  });
-};
+        wrapper.peripheral.writeValueForCharacteristicType(
+          valueEncoded,
+          wrapper.characteristic,
+          CBCharacteristicWriteWithoutResponse);
 
-module.exports = Bluetooth;
+          resolve();
+        } catch (ex) {
+          console.log("Error in Bluetooth.writeWithoutResponse: " + ex);
+          reject(ex);
+        }
+      });
+    };
+
+    module.exports = Bluetooth;

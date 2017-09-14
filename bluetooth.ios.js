@@ -343,7 +343,7 @@ Bluetooth.isBluetoothEnabled = function (arg) {
   });
 };
 
-Bluetooth.startFakeScan = function (arg) {
+Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
   return new Promise(function (resolve, reject) {
     try {
       if (!Bluetooth._isEnabled()) {
@@ -360,7 +360,6 @@ Bluetooth.startFakeScan = function (arg) {
       //retrievePeripheralsWithIdentifiers accepts typeof NSMutableArray(NSUUID). Returns NSMutableArray(CBPeripheral)
       var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers([strToUUID])
 
-console.log("nsPeripheralArray.length : " + nsPeripheralArray.count)
       for (i = 0; i < nsPeripheralArray.count; i++) {
         console.log("Added peripheral to array with UUID: " + nsPeripheralArray[i].identifier);
         Bluetooth._state.peripheralArray.addObject(nsPeripheralArray[i]);

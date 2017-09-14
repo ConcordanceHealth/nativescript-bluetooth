@@ -7,7 +7,7 @@ Bluetooth._state = {
   connectCallbacks: {},
   disconnectCallbacks: {},
   onDiscovered: null,
-  onFakeScanComplete: null
+  onRetrievalComplete: null
 };
 
 var CBPeripheralDelegateImpl = (function (_super) {
@@ -343,6 +343,11 @@ Bluetooth.isBluetoothEnabled = function (arg) {
   });
 };
 
+/**
+* Can be used to retrieve peripherals from CBCentralManager.
+* Takes in PeripheralRetrievalOptions: (UUID: String[], onRetrievalComplete: (data: Peripheral) => void;)
+*/
+
 Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
   return new Promise(function (resolve, reject) {
     try {
@@ -350,14 +355,14 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
         reject("Bluetooth is not enabled");
         return;
       }
-      console.log("In startFakeScan")
+      console.log("In retrievePeripheralsWithIdentifiers")
 
       Bluetooth._state.peripheralArray = NSMutableArray.new();
 
       //Init obj-c UUID object from string.
       var tempArray = NSMutableArray.new();
-      for (var i = 0; i < arg.UUID.count; i++){
-        tempArray.addObject(NSUUID.alloc().initWithUUIDString(arg.UUID[i]);
+      for (var i = 0; i < arg.UUID.length; i++){
+        tempArray.addObject(NSUUID.alloc().initWithUUIDString(arg.UUID[i]));
       }
 
       //retrievePeripheralsWithIdentifiers accepts typeof NSMutableArray(NSUUID). Returns NSMutableArray(CBPeripheral)
@@ -368,13 +373,10 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
         Bluetooth._state.peripheralArray.addObject(nsPeripheralArray[i]);
       }
 
-      // TODO actualy, should init the delegate here with this as the callback (see 'onConnected') --> but first test if that works
-      Bluetooth._state.onFakeScanComplete = arg.onFakeScanComplete;
+      Bluetooth._state.onRetrievalComplete = arg.onRetrievalComplete;
 
-
-console.log("LENGTH: " + Bluetooth._state.peripheralArray.count)
       for (var i = 0; i < Bluetooth._state.peripheralArray.count; i++) {
-        Bluetooth._state.onFakeScanComplete({
+        Bluetooth._state.onRetrievalComplete({
           UUID: Bluetooth._state.peripheralArray[i].identifier.UUIDString,
           name: Bluetooth._state.peripheralArray[i].name,
           RSSI: "",
@@ -382,14 +384,10 @@ console.log("LENGTH: " + Bluetooth._state.peripheralArray.count)
         })
       }
 
-      console.log("Calling resolove()")
-
       resolve();
-      console.log("After resolove()")
-
 
     } catch (ex) {
-      console.log("Error in Bluetooth.startFakeScan: " + ex);
+      console.log("Error in Bluetooth.retrievePeripheralsWithIdentifiers: " + ex);
       reject(ex);
     }
   });

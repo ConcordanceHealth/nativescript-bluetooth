@@ -26,12 +26,12 @@ declare module "nativescript-bluetooth" {
     /**
     * The UUID we are looking for.
     */
-    UUID: string;
+    UUID: String[];
 
     /**
     * This callback is invoked when a peripheral is returned from retrievePeripheralsWithIdentifiers.
     */
-    onFakeScanComplete: (data: Peripheral) => void;
+    onRetrievalComplete: (data: Peripheral) => void;
 
   }
 
@@ -198,7 +198,9 @@ declare module "nativescript-bluetooth" {
   export function setCharacteristicLogging(enable: boolean);
 
   export function startScanning(options: StartScanningOptions): Promise<any>;
+
   export function retrievePeripheralsWithIdentifiers(options: PeripheralRetrievalOptions): Promise<any>;
+
   export function directConnect(): Promise<any>;
 
   export function stopScanning(): Promise<any>;

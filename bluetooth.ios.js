@@ -393,15 +393,11 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
   });
 };
 
-
-
 Bluetooth.directConnect = function() {
   Bluetooth.connect({
     UUID: '1E0AEDA9-7D56-73CD-3BE2-3521306532CA"4',
     onConnected: function (peripheral) {
-      console.log("yYyYyyyYyYyYyYyYyYyYyyYyYyYyYyYyYyYyYyYyYyyYyYyY")
       console.log("Periperhal connected with UUID: " + peripheral.UUID);
-      console.log("yYyYyyyYyYyYyYyYyYyYyyYyYyYyYyYyYyYyYyYyYyyYyYyY")
 
       // the peripheral object now has a list of available services:
       peripheral.services.forEach(function(service) {

@@ -355,31 +355,31 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
         reject("Bluetooth is not enabled");
         return;
       }
-      console.log("In retrievePeripheralsWithIdentifiers")
 
       Bluetooth._state.peripheralArray = NSMutableArray.new();
 
-      //Init obj-c UUID object from string.
-      var tempArray = NSMutableArray.new();
+      //Init an NSMutableArray(NSUUID) from the string array parameter.
+      var arrayOfUUID = NSMutableArray.new();
       for (var i = 0; i < arg.UUID.length; i++){
-        tempArray.addObject(NSUUID.alloc().initWithUUIDString(arg.UUID[i]));
+        arrayOfUUID.addObject(NSUUID.alloc().initWithUUIDString(arg.UUID[i]));
       }
 
       //retrievePeripheralsWithIdentifiers accepts typeof NSMutableArray(NSUUID). Returns NSMutableArray(CBPeripheral)
-      var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers(tempArray);
+      var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers(arrayOfUUID);
 
+      // Add the returned Peripheral objects to Bluetooth._state.peripheralArray.
       for (i = 0; i < nsPeripheralArray.count; i++) {
-        console.log("Added peripheral to array with UUID: " + nsPeripheralArray[i].identifier);
         Bluetooth._state.peripheralArray.addObject(nsPeripheralArray[i]);
       }
 
       Bluetooth._state.onRetrievalComplete = arg.onRetrievalComplete;
 
+      // Pass each peripheral to the onRetrievalComplete callback method.
       for (var i = 0; i < Bluetooth._state.peripheralArray.count; i++) {
         Bluetooth._state.onRetrievalComplete({
           UUID: Bluetooth._state.peripheralArray[i].identifier.UUIDString,
           name: Bluetooth._state.peripheralArray[i].name,
-          RSSI: "",
+          RSSI: Bluetooth._state.peripheralArray[i].RSSI,
           state: Bluetooth._getState(Bluetooth._state.peripheralArray[i].state)
         })
       }
@@ -391,24 +391,11 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
       reject(ex);
     }
   });
-
 };
 
 
 
 Bluetooth.directConnect = function() {
-  // Bluetooth.connect({
-  //   UUID: "1E0AEDA9-7D56-73CD-3BE2-3521306532CA",
-  //   onConnected: function (peripheral) {
-  //     console.log("***********************************************")
-  //     console.log("Periperhal connected");
-  //     console.log("***********************************************")
-  //
-  //   },
-  //   onDisconnected: function (peripheral) {
-  //     console.log("Periperhal disconnected with UUID: " + peripheral.UUID);
-  //   }
-  // });
   Bluetooth.connect({
     UUID: '1E0AEDA9-7D56-73CD-3BE2-3521306532CA"4',
     onConnected: function (peripheral) {

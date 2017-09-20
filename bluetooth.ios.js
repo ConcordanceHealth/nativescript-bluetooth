@@ -245,6 +245,15 @@ var CBCentralManagerDelegateImpl = (function (_super) {
   CBCentralManagerDelegateImpl.prototype.centralManagerDidDiscoverPeripheralAdvertisementDataRSSI = function(central, peripheral, advData, RSSI) {
     console.log("----- delegate centralManager:didDiscoverPeripheral: " + peripheral.name + " @ " + RSSI);
     var peri = Bluetooth._findPeripheral(peripheral.identifier.UUIDString);
+
+    let mac = advData.objectForKey("kCBAdvDataManufacturerData");
+
+    if (mac != null) {
+      console.log("Endian MAC Address: " + mac);
+      console.log("UUID: " + peripheral.identifier.UUIDString);
+      console.log(advData.objectForKey("kCBAdvDataServiceUUIDs")[0]);
+      console.log(advData.objectForKey("kCBAdvDataLocalName"));
+    }
     if (!peri) {
       Bluetooth._state.peripheralArray.addObject(peripheral);
       if (Bluetooth._state.onDiscovered) {

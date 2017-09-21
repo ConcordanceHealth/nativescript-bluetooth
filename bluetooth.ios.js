@@ -243,26 +243,32 @@ var CBCentralManagerDelegateImpl = (function (_super) {
   };
   // fires when a peripheral is discovered after executing the 'scan' function
   CBCentralManagerDelegateImpl.prototype.centralManagerDidDiscoverPeripheralAdvertisementDataRSSI = function(central, peripheral, advData, RSSI) {
-    console.log("----- delegate centralManager:didDiscoverPeripheral: " + peripheral.name + " @ " + RSSI);
     var peri = Bluetooth._findPeripheral(peripheral.identifier.UUIDString);
-
     let mac = advData.objectForKey("kCBAdvDataManufacturerData");
+    let name = advData.objectForKey("kCBAdvDataLocalName")
+    let serviceUUIDs = advData.objectForKey("kCBAdvDataServiceUUIDs");
+    console.log("\n----- delegate centralManager:didDiscoverPeripheral: " + name + " @ " + RSSI);
 
     if (mac != null) {
       console.log("Endian MAC Address: " + mac);
       console.log("UUID: " + peripheral.identifier.UUIDString);
-      console.log(advData.objectForKey("kCBAdvDataServiceUUIDs")[0]);
-      console.log(advData.objectForKey("kCBAdvDataLocalName"));
+      if (serviceUUIDs.count >= 1) {
+        console.log("Service: " + serviceUUIDs[0]);
+      } else {
+        console.log("No serviceUUIDs found.");
+      }
+      console.log("Name: " + name + "\n");
     }
+
     if (!peri) {
       Bluetooth._state.peripheralArray.addObject(peripheral);
       if (Bluetooth._state.onDiscovered) {
         Bluetooth._state.onDiscovered({
           UUID: peripheral.identifier.UUIDString,
-          name: peripheral.name,
+          name: name,
           RSSI: RSSI,
           state: Bluetooth._getState(peripheral.state)
-        });
+        }, mac);
       } else {
         console.log("----- !!! No onDiscovered callback specified");
       }

@@ -376,6 +376,7 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
       //Init an NSMutableArray(NSUUID) from the string array parameter.
       var arrayOfUUID = NSMutableArray.new();
       for (var i = 0; i < arg.UUID.length; i++){
+        if (!arg.UUID[i]) continue;
         arrayOfUUID.addObject(NSUUID.alloc().initWithUUIDString(arg.UUID[i]));
       }
 

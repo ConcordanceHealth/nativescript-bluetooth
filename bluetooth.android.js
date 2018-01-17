@@ -131,18 +131,20 @@ Bluetooth._MyGattCallback = android.bluetooth.BluetoothGattCallback.extend({
    * 2: connected
    * 3: disconnecting
    */
-  onConnectionStateChange: function(bluetoothGatt, status, newState) {
-    console.log("------- _MyGattCallback.onConnectionStateChange, status: " + status + ", new state: " + newState);
+   onConnectionStateChange: function(bluetoothGatt, status, newState) {
+     console.log("------- _MyGattCallback.onConnectionStateChange, status: " + status + ", new state: " + newState);
 
-    // https://github.com/don/cordova-plugin-ble-central/blob/master/src/android/Peripheral.java#L191
-    if (newState == 2 /* connected */ && status === 0 /* gatt success */) {
-      console.log("---- discovering services..");
-      bluetoothGatt.discoverServices();
-    } else {
-      // perhaps the device was manually disconnected, or in use by another device
-      Bluetooth._disconnect(bluetoothGatt);
-    }
-  },
+     // https://github.com/don/cordova-plugin-ble-central/blob/master/src/android/Peripheral.java#L191
+     if (newState == 2 /* connected */ && status === 0 /* gatt success */) {
+       console.log("---- discovering services..");
+       bluetoothGatt.discoverServices();
+     } else if (newState == 0) {
+       // perhaps the device was manually disconnected, or in use by another device
+       bluetoothGatt.close();
+     } else {
+       Bluetooth._disconnect(bluetoothGatt);
+     }
+   },
 
   onServicesDiscovered: function(bluetoothGatt, status) {
     console.log("------- _MyGattCallback.onServicesDiscovered, status (0=success): " + status);

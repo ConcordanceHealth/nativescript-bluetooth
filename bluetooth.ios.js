@@ -1,4 +1,5 @@
 var Bluetooth = require("./bluetooth-common");
+var timer = require("timer");
 
 Bluetooth._state = {
   manager: null,
@@ -504,15 +505,32 @@ Bluetooth.connect = function (arg) {
         reject("Could not find peripheral with UUID " + arg.UUID);
       } else {
         console.log("Connecting to peripheral with UUID: " + arg.UUID);
+
+        console.log("Starting connect timer.")
+        const connectTimeout = timer.setTimeout(() => {
+          console.log("Connect timer elapsed. Calling disconnect...")
+          Bluetooth.disconnect({
+            UUID: arg.UUID,
+            onDisconnected: (peripheral) => {
+
+              console.log("Disconnected due to timeout: " + arg.UUID);
+              //  arg.onDisconnected();
+              reject('disconnected');
+            }
+          });
+        }, 7000);
         Bluetooth._state.manager.connectPeripheralOptions(peripheral, null);
         Bluetooth._state.disconnectCallbacks[arg.UUID] = function () {
+          clearInterval(connectTimeout);
           arg.onDisconnected(peripheral);
           resolve('disconnected');
         };
         Bluetooth._state.connectCallbacks[arg.UUID] = function () {
+          clearInterval(connectTimeout);
           arg.onConnected(peripheral);
           resolve('connected');
         };
+
       }
     } catch (ex) {
       console.log("Error in Bluetooth.connect: " + ex);

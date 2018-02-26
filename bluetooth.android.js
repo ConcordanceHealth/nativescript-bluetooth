@@ -1,6 +1,7 @@
 var utils = require("utils/utils");
 var application = require("application");
 var Bluetooth = require("./bluetooth-common");
+var timer = require("timer");
 
 var ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 222;
 
@@ -494,6 +495,19 @@ Bluetooth.connect = function (arg) {
         console.log("Connecting to peripheral with UUID: " + arg.UUID);
 
         var bluetoothGatt;
+        console.log("Starting connect timer.")
+        const connectTimeout = timer.setTimeout(() => {
+          console.log("Connect timer elapsed. Calling disconnect...")
+          Bluetooth.disconnect({
+            UUID: arg.UUID,
+            onDisconnected: (peripheral) => {
+
+              console.log("Disconnected due to timeout: " + arg.UUID);
+              //  arg.onDisconnected();
+              reject('disconnected');
+            }
+          });
+        }, 7000);
         if (android.os.Build.VERSION.SDK_INT < 23 /*android.os.Build.VERSION_CODES.M */) {
           bluetoothGatt = bluetoothDevice.connectGatt(
               utils.ad.getApplicationContext(), // context
@@ -512,10 +526,12 @@ Bluetooth.connect = function (arg) {
         Bluetooth._connections[arg.UUID] = {
           state: 'connecting',
           onConnected: function () {
+            clearInterval(connectTimeout);
             arg.onConnected(bluetoothGatt);
             resolve('connected');
           },
           onDisconnected: function () {
+            clearInterval(connectTimeout);
             arg.onDisconnected();
             resolve('disconnected');
           },

@@ -18,7 +18,7 @@ declare module "nativescript-bluetooth" {
     /**
     * This callback is invoked when a peripheral is found.
     */
-    onDiscovered: (data: Peripheral, mac: string) => void;
+    onDiscovered: (data: Peripheral, mac: NSData) => void;
   }
 
   export interface PeripheralRetrievalOptions{

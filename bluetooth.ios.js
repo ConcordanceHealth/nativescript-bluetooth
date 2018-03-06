@@ -518,7 +518,7 @@ Bluetooth.connect = function (arg) {
               reject('disconnected');
             }
           });
-        }, 7000);
+        }, 12000);
         Bluetooth._state.manager.connectPeripheralOptions(peripheral, null);
         Bluetooth._state.disconnectCallbacks[arg.UUID] = function () {
           clearInterval(connectTimeout);

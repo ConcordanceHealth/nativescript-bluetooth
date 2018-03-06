@@ -507,7 +507,7 @@ Bluetooth.connect = function (arg) {
               reject('disconnected');
             }
           });
-        }, 7000);
+        }, 12000);
         if (android.os.Build.VERSION.SDK_INT < 23 /*android.os.Build.VERSION_CODES.M */) {
           bluetoothGatt = bluetoothDevice.connectGatt(
               utils.ad.getApplicationContext(), // context

@@ -488,6 +488,13 @@ Bluetooth.connect = function (arg) {
         reject("No UUID was passed");
         return;
       }
+      if (!arg.timeoutInterval) {
+        reject("No timeout interval was passed.");
+        return;
+      }
+
+      var timeoutInterval = arg.timeoutInterval;
+
       var bluetoothDevice = adapter.getRemoteDevice(arg.UUID);
       if (bluetoothDevice === null) {
         reject("Could not find peripheral with UUID " + arg.UUID);
@@ -495,19 +502,22 @@ Bluetooth.connect = function (arg) {
         console.log("Connecting to peripheral with UUID: " + arg.UUID);
 
         var bluetoothGatt;
-        console.log("Starting connect timer.")
+
+        console.log("Starting connect timer with a duration of " + timeoutInterval)
+
         const connectTimeout = timer.setTimeout(() => {
+
           console.log("Connect timer elapsed. Calling disconnect...")
+
           Bluetooth.disconnect({
             UUID: arg.UUID,
             onDisconnected: (peripheral) => {
-
               console.log("Disconnected due to timeout: " + arg.UUID);
               //  arg.onDisconnected();
               reject('disconnected');
             }
           });
-        }, 12000);
+        }, timeoutInterval);
         if (android.os.Build.VERSION.SDK_INT < 23 /*android.os.Build.VERSION_CODES.M */) {
           bluetoothGatt = bluetoothDevice.connectGatt(
               utils.ad.getApplicationContext(), // context

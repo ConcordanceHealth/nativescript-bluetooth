@@ -500,25 +500,34 @@ Bluetooth.connect = function (arg) {
         reject("No UUID was passed");
         return;
       }
+
+      if (!arg.timeoutInterval) {
+        reject("No timeout interval was passed.");
+        return;
+      }
+
+      var timeoutInterval = arg.timeoutInterval;
+
       var peripheral = Bluetooth._findPeripheral(arg.UUID);
       if (peripheral === null) {
         reject("Could not find peripheral with UUID " + arg.UUID);
       } else {
         console.log("Connecting to peripheral with UUID: " + arg.UUID);
 
-        console.log("Starting connect timer.")
+        console.log("Starting connect timer with a duration of " + timeoutInterval)
+
         const connectTimeout = timer.setTimeout(() => {
           console.log("Connect timer elapsed. Calling disconnect...")
+
           Bluetooth.disconnect({
             UUID: arg.UUID,
             onDisconnected: (peripheral) => {
-
               console.log("Disconnected due to timeout: " + arg.UUID);
               //  arg.onDisconnected();
               reject('disconnected');
             }
           });
-        }, 12000);
+        }, timeoutInterval);
         Bluetooth._state.manager.connectPeripheralOptions(peripheral, null);
         Bluetooth._state.disconnectCallbacks[arg.UUID] = function () {
           clearInterval(connectTimeout);

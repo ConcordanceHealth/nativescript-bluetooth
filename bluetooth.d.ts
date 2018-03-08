@@ -60,6 +60,11 @@ declare module "nativescript-bluetooth" {
     UUID: string;
 
     /**
+    * The timout interval for the connect function.
+    */
+    timeoutInterval: number;
+
+    /**
     * Once the peripheral is connected this callback function is invoked.
     */
     onConnected: (data: Peripheral) => void;

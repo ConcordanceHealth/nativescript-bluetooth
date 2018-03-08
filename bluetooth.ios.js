@@ -11,6 +11,8 @@ Bluetooth._state = {
   onRetrievalComplete: null
 };
 
+var connectTimeout;
+
 var CBPeripheralDelegateImpl = (function (_super) {
   __extends(CBPeripheralDelegateImpl, _super);
   function CBPeripheralDelegateImpl() {
@@ -26,8 +28,10 @@ var CBPeripheralDelegateImpl = (function (_super) {
     return this;
   };
   CBPeripheralDelegateImpl.prototype.peripheralDidDiscoverServices = function(peripheral, error) {
+    console.log("----Connected to cap. Clearing timeout.");
     console.log("----- delegate peripheralDidDiscoverServices");
 
+    clearInterval(connectTimeout);
     // map native services to a JS object
     this._services = [];
     for (var i = 0; i < peripheral.services.count; i++) {
@@ -516,7 +520,7 @@ Bluetooth.connect = function (arg) {
 
         console.log("Starting connect timer with a duration of " + timeoutInterval)
 
-        const connectTimeout = timer.setTimeout(() => {
+        connectTimeout = timer.setTimeout(() => {
           console.log("Connect timer elapsed. Calling disconnect...")
 
           Bluetooth.disconnect({

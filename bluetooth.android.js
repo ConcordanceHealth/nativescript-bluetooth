@@ -6,7 +6,7 @@ var timer = require("timer");
 var ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 222;
 
 var adapter,
-    onDiscovered;
+    onDiscovered, connectTimeout;
 
 Bluetooth._coarseLocationPermissionGranted = function () {
   var hasPermission = android.os.Build.VERSION.SDK_INT < 23; // Android M. (6.0)
@@ -137,7 +137,8 @@ Bluetooth._MyGattCallback = android.bluetooth.BluetoothGattCallback.extend({
 
      // https://github.com/don/cordova-plugin-ble-central/blob/master/src/android/Peripheral.java#L191
      if (newState == 2 /* connected */ && status === 0 /* gatt success */) {
-       console.log("---- discovering services..");
+       console.log("----Connected to cap. Clearing timeout and discovering services..");
+        clearInterval(connectTimeout);
        bluetoothGatt.discoverServices();
      } else if (newState == 0) {
        // perhaps the device was manually disconnected, or in use by another device
@@ -488,6 +489,7 @@ Bluetooth.connect = function (arg) {
         reject("No UUID was passed");
         return;
       }
+
       if (!arg.timeoutInterval) {
         reject("No timeout interval was passed.");
         return;
@@ -502,16 +504,13 @@ Bluetooth.connect = function (arg) {
         console.log("Connecting to peripheral with UUID: " + arg.UUID);
 
         var bluetoothGatt;
-
         console.log("Starting connect timer with a duration of " + timeoutInterval)
-
-        const connectTimeout = timer.setTimeout(() => {
-
+        connectTimeout = timer.setTimeout(() => {
           console.log("Connect timer elapsed. Calling disconnect...")
-
           Bluetooth.disconnect({
             UUID: arg.UUID,
             onDisconnected: (peripheral) => {
+
               console.log("Disconnected due to timeout: " + arg.UUID);
               //  arg.onDisconnected();
               reject('disconnected');

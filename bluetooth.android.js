@@ -137,12 +137,15 @@ Bluetooth._MyGattCallback = android.bluetooth.BluetoothGattCallback.extend({
 
      // https://github.com/don/cordova-plugin-ble-central/blob/master/src/android/Peripheral.java#L191
      if (newState == 2 /* connected */ && status === 0 /* gatt success */) {
-       console.log("----Connected to cap. Clearing timeout and discovering services..");
-       clearTimeout(connectTimeout);
-       connectTimeout = null;
+       if (connectTimeout) {
+         console.log("----Connected to cap. Clearing timeout and discovering services..");
+         clearTimeout(connectTimeout);
+         connectTimeout = null;
+       }
+       
        bluetoothGatt.discoverServices();
      } else if (newState == 0) {
-      Bluetooth._disconnect(bluetoothGatt);
+       Bluetooth._disconnect(bluetoothGatt);
        // perhaps the device was manually disconnected, or in use by another device
        bluetoothGatt.close();
      } else {

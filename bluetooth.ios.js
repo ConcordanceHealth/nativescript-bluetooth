@@ -302,10 +302,13 @@ var CBCentralManagerDelegateImpl = (function (_super) {
     var cb = Bluetooth._state.connectCallbacks[peripheral.identifier.UUIDString];
     var delegate = CBPeripheralDelegateImpl.new().initWithCallback(cb);
     CFRetain(delegate);
-    peri.delegate = delegate;
+   
+    if (peri) {
+      peri.delegate = delegate;
 
-    console.log("----- delegate centralManager:didConnectPeripheral, let's discover service");
-    peri.discoverServices(null);
+      console.log("----- delegate centralManager:didConnectPeripheral, let's discover service");
+      peri.discoverServices(null);  
+    }
   };
   CBCentralManagerDelegateImpl.prototype.centralManagerDidDisconnectPeripheralError = function(central, peripheral, error) {
     // this event needs to be honored by the client as any action afterwards crashes the app

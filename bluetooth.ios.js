@@ -1,4 +1,5 @@
 var Bluetooth = require("./bluetooth-common");
+var timer = require("timer");
 
 Bluetooth._state = {
   manager: null,
@@ -9,6 +10,8 @@ Bluetooth._state = {
   onDiscovered: null,
   onRetrievalComplete: null
 };
+
+var connectTimeout;
 
 var CBPeripheralDelegateImpl = (function (_super) {
   __extends(CBPeripheralDelegateImpl, _super);
@@ -25,8 +28,14 @@ var CBPeripheralDelegateImpl = (function (_super) {
     return this;
   };
   CBPeripheralDelegateImpl.prototype.peripheralDidDiscoverServices = function(peripheral, error) {
+    if (connectTimeout) {
+      console.log("----Connected to cap. Clearing timeout.");
+      
+      clearInterval(connectTimeout);
+    }
     console.log("----- delegate peripheralDidDiscoverServices");
 
+    
     // map native services to a JS object
     this._services = [];
     for (var i = 0; i < peripheral.services.count; i++) {
@@ -293,10 +302,13 @@ var CBCentralManagerDelegateImpl = (function (_super) {
     var cb = Bluetooth._state.connectCallbacks[peripheral.identifier.UUIDString];
     var delegate = CBPeripheralDelegateImpl.new().initWithCallback(cb);
     CFRetain(delegate);
-    peri.delegate = delegate;
+   
+    if (peri) {
+      peri.delegate = delegate;
 
-    console.log("----- delegate centralManager:didConnectPeripheral, let's discover service");
-    peri.discoverServices(null);
+      console.log("----- delegate centralManager:didConnectPeripheral, let's discover service");
+      peri.discoverServices(null);  
+    }
   };
   CBCentralManagerDelegateImpl.prototype.centralManagerDidDisconnectPeripheralError = function(central, peripheral, error) {
     // this event needs to be honored by the client as any action afterwards crashes the app
@@ -499,20 +511,47 @@ Bluetooth.connect = function (arg) {
         reject("No UUID was passed");
         return;
       }
+
+      var timeoutInterval = arg.timeoutInterval;
+
       var peripheral = Bluetooth._findPeripheral(arg.UUID);
       if (peripheral === null) {
         reject("Could not find peripheral with UUID " + arg.UUID);
       } else {
         console.log("Connecting to peripheral with UUID: " + arg.UUID);
+
+        if (timeoutInterval) {
+          console.log("Starting connect timer with a duration of " + timeoutInterval)
+          
+          connectTimeout = timer.setTimeout(() => {
+            console.log("Connect timer elapsed. Calling disconnect...")
+            
+            Bluetooth.disconnect({
+              UUID: arg.UUID,
+              onDisconnected: (peripheral) => {
+                console.log("Disconnected due to timeout: " + arg.UUID);
+                //  arg.onDisconnected();
+                reject('disconnected');
+              }
+            });
+          }, timeoutInterval);
+        } else {
+          console.log("No disconnect timer set.")
+        }
+        
+
         Bluetooth._state.manager.connectPeripheralOptions(peripheral, null);
         Bluetooth._state.disconnectCallbacks[arg.UUID] = function () {
+          clearInterval(connectTimeout);
           arg.onDisconnected(peripheral);
           resolve('disconnected');
         };
         Bluetooth._state.connectCallbacks[arg.UUID] = function () {
+          clearInterval(connectTimeout);
           arg.onConnected(peripheral);
           resolve('connected');
         };
+
       }
     } catch (ex) {
       console.log("Error in Bluetooth.connect: " + ex);

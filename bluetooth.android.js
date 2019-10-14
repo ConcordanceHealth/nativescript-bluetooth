@@ -1,11 +1,12 @@
 var utils = require("utils/utils");
 var application = require("application");
 var Bluetooth = require("./bluetooth-common");
+var timer = require("timer");
 
 var ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 222;
 
 var adapter,
-    onDiscovered;
+    onDiscovered, connectTimeout;
 
 Bluetooth._coarseLocationPermissionGranted = function () {
   var hasPermission = android.os.Build.VERSION.SDK_INT < 23; // Android M. (6.0)
@@ -136,9 +137,15 @@ Bluetooth._MyGattCallback = android.bluetooth.BluetoothGattCallback.extend({
 
      // https://github.com/don/cordova-plugin-ble-central/blob/master/src/android/Peripheral.java#L191
      if (newState == 2 /* connected */ && status === 0 /* gatt success */) {
-       console.log("---- discovering services..");
+       if (connectTimeout) {
+         console.log("----Connected to cap. Clearing timeout and discovering services..");
+         clearTimeout(connectTimeout);
+         connectTimeout = null;
+       }
+       
        bluetoothGatt.discoverServices();
      } else if (newState == 0) {
+       Bluetooth._disconnect(bluetoothGatt);
        // perhaps the device was manually disconnected, or in use by another device
        bluetoothGatt.close();
      } else {
@@ -224,12 +231,15 @@ Bluetooth._MyGattCallback = android.bluetooth.BluetoothGattCallback.extend({
       }
       var device = bluetoothGatt.getDevice();
       var stateObject = Bluetooth._connections[device.getAddress()];
-      stateObject.onConnected({
-        UUID: device.getAddress(), // TODO consider renaming to id (and iOS as well)
-        name: device.getName(),
-        state: 'connected', // Bluetooth._getState(peripheral.state),
-        services: servicesJs
-      });
+       // this was causing the app to crash if trying to connect and scan at the same time
+       if (stateObject) {
+          stateObject.onConnected({
+            UUID: device.getAddress(), // TODO consider renaming to id (and iOS as well)
+            name: device.getName(),
+            state: 'connected', // Bluetooth._getState(peripheral.state),
+            services: servicesJs
+          });
+      }
     }
   },
 
@@ -487,6 +497,9 @@ Bluetooth.connect = function (arg) {
         reject("No UUID was passed");
         return;
       }
+
+      var timeoutInterval = arg.timeoutInterval;
+
       var bluetoothDevice = adapter.getRemoteDevice(arg.UUID);
       if (bluetoothDevice === null) {
         reject("Could not find peripheral with UUID " + arg.UUID);
@@ -494,6 +507,26 @@ Bluetooth.connect = function (arg) {
         console.log("Connecting to peripheral with UUID: " + arg.UUID);
 
         var bluetoothGatt;
+
+        if (timeoutInterval) {
+          console.log("Starting connect timer with a duration of " + timeoutInterval)
+
+          connectTimeout = timer.setTimeout(() => {
+            console.log("Connect timer elapsed. Calling disconnect on " + arg.UUID);
+            Bluetooth.disconnect({
+              UUID: arg.UUID,
+              onDisconnected: (peripheral) => {
+
+                console.log("Disconnected due to timeout: " + arg.UUID);
+                //  arg.onDisconnected();
+                reject('disconnected');
+              }
+            });
+          }, timeoutInterval);
+        } else {
+          console.log("No disconnect timer set.")
+        }
+
         if (android.os.Build.VERSION.SDK_INT < 23 /*android.os.Build.VERSION_CODES.M */) {
           bluetoothGatt = bluetoothDevice.connectGatt(
               utils.ad.getApplicationContext(), // context
@@ -512,10 +545,18 @@ Bluetooth.connect = function (arg) {
         Bluetooth._connections[arg.UUID] = {
           state: 'connecting',
           onConnected: function () {
+
+            clearTimeout(connectTimeout);
+            connectTimeout = null;
+
             arg.onConnected(bluetoothGatt);
             resolve('connected');
           },
           onDisconnected: function () {
+
+            clearTimeout(connectTimeout);
+            connectTimeout = null;
+
             arg.onDisconnected();
             resolve('disconnected');
           },
@@ -538,11 +579,13 @@ Bluetooth.disconnect = function (arg) {
       }
       var connection = Bluetooth._connections[arg.UUID];
       if (!connection) {
-        reject("Peripheral wasn't connected");
+        reject("Peripheral is disconnected");
         return;
       }
       Bluetooth._connections[arg.UUID] = {
         onDisconnected: function () {
+          clearTimeout(connectTimeout);
+          connectTimeout = null;
           arg.onDisconnected();
           resolve('disconnected');
         }

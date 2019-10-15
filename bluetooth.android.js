@@ -8,11 +8,18 @@ var ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE = 222;
 var adapter,
     onDiscovered, connectTimeout;
 
+const AppPackageName = useAndroidX() ? global.androidx.core.app : android.support.v4.app;
+const ContentPackageName = useAndroidX() ? global.androidx.core.content : android.support.v4.content;
+
+function useAndroidX () {
+  return global.androidx && global.androidx.appcompat;
+}
+
 Bluetooth._coarseLocationPermissionGranted = function () {
-  var hasPermission = android.os.Build.VERSION.SDK_INT < 23; // Android M. (6.0)
+  var hasPermission = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M; // Android M. (6.0)
   if (!hasPermission) {
     hasPermission = android.content.pm.PackageManager.PERMISSION_GRANTED ==
-      android.support.v4.content.ContextCompat.checkSelfPermission(application.android.foregroundActivity, android.Manifest.permission.ACCESS_COARSE_LOCATION);
+      ContentPackageName.ContextCompat.checkSelfPermission(application.android.foregroundActivity, android.Manifest.permission.ACCESS_COARSE_LOCATION);
   }
   return hasPermission;
 };
@@ -27,7 +34,7 @@ Bluetooth.requestCoarseLocationPermission = function () {
   return new Promise(function (resolve) {
     if (!Bluetooth._coarseLocationPermissionGranted()) {
       // in a future version we could hook up the callback and change this flow a bit
-      android.support.v4.app.ActivityCompat.requestPermissions(
+      AppPackageName.ActivityCompat.requestPermissions(
           application.android.foregroundActivity,
           [android.Manifest.permission.ACCESS_COARSE_LOCATION],
           ACCESS_COARSE_LOCATION_PERMISSION_REQUEST_CODE);

@@ -336,11 +336,20 @@ var CBCentralManagerDelegateImpl = (function (_super) {
     console.log("----- centralDelegate obj: " + obj);
   });
   // TODO options? https://github.com/randdusing/cordova-plugin-bluetoothle/blob/master/src/ios/BluetoothLePlugin.m#L187
-  Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+  if(CBCentralManager && !Bluetooth._state.manager) {
+    Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+  }
+
 })();
 
 Bluetooth._isEnabled = function (arg) {
-  return Bluetooth._state.manager.state == CBCentralManagerStatePoweredOn;
+  if(Bluetooth._state.manager) {
+    return Bluetooth._state.manager.state == CBCentralManagerStatePoweredOn;
+  } else {
+    Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+    return Bluetooth._state.manager.state == CBCentralManagerStatePoweredOn;
+
+  }
 };
 
 Bluetooth._getState = function(stateId) {
@@ -390,7 +399,14 @@ Bluetooth.retrievePeripheralsWithIdentifiers = function (arg) {
       }
 
       //retrievePeripheralsWithIdentifiers accepts typeof NSMutableArray(NSUUID). Returns NSMutableArray(CBPeripheral)
-      var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers(arrayOfUUID);
+      if(Bluetooth._state.manager) {
+        var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers(arrayOfUUID);
+      } else {
+        Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+        var nsPeripheralArray = Bluetooth._state.manager.retrievePeripheralsWithIdentifiers(arrayOfUUID);
+      }
+
+
 
       // Add the returned Peripheral objects to Bluetooth._state.peripheralArray.
       for (i = 0; i < nsPeripheralArray.count; i++) {
@@ -452,11 +468,24 @@ Bluetooth.startScanning = function (arg) {
       for (var s in serviceUUIDs) {
         services.push(CBUUID.UUIDWithString(serviceUUIDs[s]));
       }
-      Bluetooth._state.manager.scanForPeripheralsWithServicesOptions(services, null);
+      if(Bluetooth._state.manager) {
+        Bluetooth._state.manager.scanForPeripheralsWithServicesOptions(services, null);
+      } else {
+        Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+        Bluetooth._state.manager.scanForPeripheralsWithServicesOptions(services, null);
+
+      }
       if (arg.seconds) {
         setTimeout(function() {
           // note that by now a manual 'stop' may have been invoked, but that doesn't hurt
-          Bluetooth._state.manager.stopScan();
+          if(Bluetooth._state.manager) {
+            Bluetooth._state.manager.stopScan();
+          } else {
+            Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+            Bluetooth._state.manager.stopScan();
+
+          }
+
           resolve();
         }, arg.seconds * 1000);
       } else {
@@ -476,7 +505,13 @@ Bluetooth.stopScanning = function (arg) {
         reject("Bluetooth is not enabled");
         return;
       }
-      Bluetooth._state.manager.stopScan();
+      if(Bluetooth._state.manager) {
+        Bluetooth._state.manager.stopScan();
+      } else {
+        Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+        Bluetooth._state.manager.stopScan();
+
+      }
       resolve();
     } catch (ex) {
       console.log("Error in Bluetooth.stopScanning: " + ex);
@@ -535,9 +570,13 @@ Bluetooth.connect = function (arg) {
         } else {
           console.log("No disconnect timer set.")
         }
-        
 
-        Bluetooth._state.manager.connectPeripheralOptions(peripheral, null);
+        if (Bluetooth._state.manager) {
+          Bluetooth._state.manager.connectPeripheralOptions(peripheral, null);
+        } else {
+          Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+          Bluetooth._state.manager.connectPeripheralOptions(peripheral, null);
+        }
         Bluetooth._state.disconnectCallbacks[arg.UUID] = function () {
           clearInterval(connectTimeout);
           arg.onDisconnected(peripheral);
@@ -579,7 +618,13 @@ Bluetooth.disconnect = function (arg) {
         };
         // no need to send an error when already disconnected, but it's wise to check it
         if (peripheral.state != CBPeripheralStateDisconnected) {
-          Bluetooth._state.manager.cancelPeripheralConnection(peripheral);
+          if(Bluetooth._state.manager) {
+            Bluetooth._state.manager.cancelPeripheralConnection(peripheral);
+          } else {
+            Bluetooth._state.manager = CBCentralManager.alloc().initWithDelegateQueue(Bluetooth._state.centralDelegate, null);
+            Bluetooth._state.manager.cancelPeripheralConnection(peripheral);
+
+          }
           peripheral.delegate = null;
           // TODO remove from the peripheralArray as well
         }
